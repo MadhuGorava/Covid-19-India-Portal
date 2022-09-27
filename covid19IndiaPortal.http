@@ -1,6 +1,79 @@
 POST http://localhost:3000/login/
+Content-Type: application/json
 
 {
   "username": "christopher_phillips",
   "password": "christy@123"
+}
+
+###
+GET http://localhost:3000/states/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNocmlzdG9waGVyX3BoaWxsaXBzIiwiaWF0IjoxNjY0MjkzOTAwfQ.lMFG5Y2vBGgvr6IH_bM-cyIP6M-2BOhN6sHyeDejk-8
+
+
+[
+  {
+    "stateId": 1,
+    "stateName": "Andaman and Nicobar Islands",
+    "population": 380581
+  },
+
+  ...
+]
+###
+GET http://localhost:3000/states/8/
+
+{
+  "stateId": 8,
+  "stateName": "Delhi",
+  "population": 16787941
+}
+
+###
+
+POST http://localhost:3000/districts/
+Content-Type: application/json
+
+{
+  "districtName": "Bagalkot",
+  "stateId": 3,
+  "cases": 2323,
+  "cured": 2000,
+  "active": 315,
+  "deaths": 8
+}
+
+###
+GET  http://localhost:3000/districts/332/
+
+{
+  "districtId": 322,
+  "districtName": "Palakkad",
+  "stateId": 17,
+  "cases": 61558,
+  "cured": 59276,
+  "active": 2095,
+  "deaths": 177
+}
+
+###
+PUT http://localhost:3000/districts/332/
+
+{
+  "districtName": "Nadia",
+  "stateId": 3,
+  "cases": 9628,
+  "cured": 6524,
+  "active": 3000,
+  "deaths": 104
+}
+
+###
+GET http://localhost:3000/states/5/stats/
+
+{
+  "totalCases": 724355,
+  "totalCured": 615324,
+  "totalActive": 99254,
+  "totalDeaths": 9777
 }

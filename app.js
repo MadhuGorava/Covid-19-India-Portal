@@ -27,6 +27,35 @@ const initializeDbAndServer = async () => {
 
 initializeDbAndServer();
 
+const convertDbIntoResponse = (dbObject) => {
+  return {
+    stateId: dbObject.state_id,
+    stateName: dbObject.state_name,
+    districtId: dbObject.district_id,
+    districtName: dbObject.district_name,
+  };
+};
+
+const authenticateToken = (request, response, next) => {
+  let jwtToken;
+  const authHeader = request.header["authentication"];
+  if (authHeader !== undefined) {
+    jwtToken = authHeader.split(" ")[1];
+  }
+  if (authHeader === undefined) {
+    response.status(401);
+    response.send("Invalid JWT Token");
+  } else {
+    jwt.verify(jwtToken, "gmadhu9381", async (error, payload) => {
+      if (error) {
+        response.send("Invalid JWT Token");
+      } else {
+        next();
+      }
+    });
+  }
+};
+
 Express.post("/login", async (request, response) => {
   const { username, password } = request.body;
   const selectUserQuery = `SELECT * FROM user WHERE username = '${username}'`;
@@ -46,5 +75,82 @@ Express.post("/login", async (request, response) => {
     }
   }
 });
+
+Express.get("/states/", authenticateToken, async (request, response) => {
+  const stateResponseQuery = `SELECT * FROM state`;
+  const stateDetails = await db.all(stateResponseQuery);
+  response.send(convertDbIntoResponse(stateDetails));
+});
+
+Express.get(
+  "/states/:stateId/",
+  authenticateToken,
+  async (request, response) => {
+    const { stateId } = request.params;
+    const stateQuery = `SELECT * FROM state WHERE state_id = ${stateId}`;
+    const stateDetails = await db.get(stateQuery);
+    response.send(convertDbIntoResponse(stateDetails));
+  }
+);
+
+Express.post("/districts/", authenticateToken, async (request, response) => {
+  const { districtId } = request.params;
+  const { districtName, stateId, cases, cured, active, deaths } = request.body;
+  const districtQuery = `INSERT INTO district (district_name, state_id, cases, cured, active, deaths) VALUES ('${districtName}', ${stateId}, ${cases}, ${cured}, ${active}, ${deaths})`;
+  await db.run(districtQuery);
+  response.send("District SuccessFully Added");
+});
+
+Express.get(
+  "/districts/:districtId/",
+  authenticateToken,
+  async (request, response) => {
+    const { districtId } = request.params;
+    const districtQuery = `SELECT * FROM district WHERE district_id = ${districtId}`;
+    const districtDetails = await db.get(districtQuery);
+    response.send(convertDbIntoResponse(districtDetails));
+  }
+);
+
+Express.delete(
+  "/districts/:districtId/",
+  authenticateToken,
+  async (request, response) => {
+    const { districtId } = request.params;
+    const deleteQuery = `DELETE FROM district WHERE district_id = ${districtId}`;
+    const getDeleteDistrict = await db.get(deleteQuery);
+    response.send("District Removed");
+  }
+);
+
+Express.put(
+  "/districts/:districtId/",
+  authenticateToken,
+  async (request, response) => {
+    const { districtId } = request.params;
+    const {
+      districtName,
+      stateId,
+      cases,
+      cured,
+      active,
+      deaths,
+    } = request.body;
+    const updateQuery = `UPDATE district SET (district_name = '${districtName}', state_id = ${stateId}, cases = ${cases}, cured = ${cured}, active = ${active}, deaths = ${deaths}) WHERE district_id = ${districtId}`;
+    const getUpdate = await db.run(updateQuery);
+    response.send("District Details Updated");
+  }
+);
+
+Express.get(
+  "/states/:stateId/stats/",
+  authenticateToken,
+  async (request, response) => {
+    const { stateId } = request.params;
+    const getMovieDetailQuery = `select sum(cases) as totalCases, sum(cured) as totalCured, sum(active) as totalActive, sum(deaths) as totalDeaths from district where state_id = ${stateId}`;
+    const movieDbResponse = await db.get(getMovieDetailQuery);
+    response.send(movieDbResponse);
+  }
+);
 
 module.exports = Express;
