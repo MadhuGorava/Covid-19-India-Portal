@@ -46,7 +46,7 @@ const authenticateToken = (request, response, next) => {
     response.status(401);
     response.send("Invalid JWT Token");
   } else {
-    jwt.verify(jwtToken, "gmadhu9381", async (error, payload) => {
+    jwt.verify(jwtToken, "abcdefg", async (error, payload) => {
       if (error) {
         response.send("Invalid JWT Token");
       } else {
@@ -62,16 +62,16 @@ Express.post("/login", async (request, response) => {
   const dbUser = await db.get(selectUserQuery);
   if (dbUser === undefined) {
     response.status(400);
-    response.send("Invalid User");
+    response.send("Invalid user");
   } else {
     const isPasswordMatched = await bcrypt.compare(password, dbUser.password);
     if (isPasswordMatched === true) {
       const payload = { username: username };
-      const jwtToken = jwt.sign(payload, "gmadhu9381");
+      const jwtToken = jwt.sign(payload, "abcdefg");
       response.send({ jwtToken });
     } else {
       response.status(400);
-      response.send("Invalid Password");
+      response.send("Invalid password");
     }
   }
 });
