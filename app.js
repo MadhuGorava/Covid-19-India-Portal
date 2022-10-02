@@ -38,7 +38,7 @@ const convertDbIntoResponse = (dbObject) => {
 
 const authenticateToken = (request, response, next) => {
   let jwtToken;
-  const authHeader = request.header["authentication"];
+  const authHeader = request.headers["authorization"];
   if (authHeader !== undefined) {
     jwtToken = authHeader.split(" ")[1];
   }
