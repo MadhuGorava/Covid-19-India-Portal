@@ -7,32 +7,22 @@ Content-Type: application/json
 }
 
 ###
+// API 2
+// Returns a list of all states in the state table
 GET http://localhost:3000/states/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNocmlzdG9waGVyX3BoaWxsaXBzIiwiaWF0IjoxNjY0NDI3MTYxfQ.4xtLD6huRq5rsQHDvr0Benv3ycaGQHEP7O5yI2nUTO0
-
-
-
-[
-  {
-    "stateId": 1,
-    "stateName": "Andaman and Nicobar Islands",
-    "population": 380581
-  },
-
-  ...
-]
-###
-GET http://localhost:3000/states/8/
-
-{
-  "stateId": 8,
-  "stateName": "Delhi",
-  "population": 16787941
-}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNocmlzdG9waGVyX3BoaWxsaXBzIiwiaWF0IjoxNjI0MTEyNDYzfQ.yWmLJkXHpJzXjY8qbKNRtsbh4bS-imUxRu-VJniDofI
 
 ###
+//API 3
+// Returns a state based on the state ID
+GET http://localhost:3000/states/5/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNocmlzdG9waGVyX3BoaWxsaXBzIiwiaWF0IjoxNjI0MTEyNDYzfQ.yWmLJkXHpJzXjY8qbKNRtsbh4bS-imUxRu-VJniDofI
 
+###
+//API 4
+//Create a district in the district table, district_id is auto-incremented
 POST http://localhost:3000/districts/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNocmlzdG9waGVyX3BoaWxsaXBzIiwiaWF0IjoxNjI0MTEyNDYzfQ.yWmLJkXHpJzXjY8qbKNRtsbh4bS-imUxRu-VJniDofI
 Content-Type: application/json
 
 {
@@ -45,20 +35,17 @@ Content-Type: application/json
 }
 
 ###
-GET  http://localhost:3000/districts/332/
-
-{
-  "districtId": 322,
-  "districtName": "Palakkad",
-  "stateId": 17,
-  "cases": 61558,
-  "cured": 59276,
-  "active": 2095,
-  "deaths": 177
-}
+//API 6
+//Deletes a district from the district table based on the district ID
+DELETE http://localhost:3000/districts/3/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNocmlzdG9waGVyX3BoaWxsaXBzIiwiaWF0IjoxNjI0MTEyNDYzfQ.yWmLJkXHpJzXjY8qbKNRtsbh4bS-imUxRu-VJniDofI
 
 ###
-PUT http://localhost:3000/districts/332/
+//API 7
+//Updates the details of a specific district based on the district ID
+PUT http://localhost:3000/districts/3/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNocmlzdG9waGVyX3BoaWxsaXBzIiwiaWF0IjoxNjI0MTEyNDYzfQ.yWmLJkXHpJzXjY8qbKNRtsbh4bS-imUxRu-VJniDofI
+Content-Type: application/json
 
 {
   "districtName": "Nadia",
@@ -70,11 +57,5 @@ PUT http://localhost:3000/districts/332/
 }
 
 ###
-GET http://localhost:3000/states/5/stats/
-
-{
-  "totalCases": 724355,
-  "totalCured": 615324,
-  "totalActive": 99254,
-  "totalDeaths": 9777
-}
+GET http://localhost:3000/states/2/stats/ 
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNocmlzdG9waGVyX3BoaWxsaXBzIiwiaWF0IjoxNjI0MTEyNDYzfQ.yWmLJkXHpJzXjY8qbKNRtsbh4bS-imUxRu-VJniDofI

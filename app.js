@@ -1,131 +1,178 @@
 const express = require("express");
-const Express = express();
-Express.use(express.json());
-const { open } = require("sqlite");
+const path = require("path");
 const sqlite3 = require("sqlite3");
+const { open } = require("sqlite");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const path = require("path");
-
-const dbPath = path.join(__dirname, "covid19IndiaPortal.db");
-let db = null;
-
-const initializeDbAndServer = async () => {
+const Express = express();
+Express.use(express.json());
+const databasePath = path.join(__dirname, "covid19IndiaPortal.db");
+let database = null;
+const initializeAndDbAndServer = async () => {
   try {
-    db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database,
-    });
+    database = await open({ filename: databasePath, driver: sqlite3.Database });
     Express.listen(3000, () => {
-      console.log("Server Running at http://localhost:3000/");
+      console.log(`server is running on http://localhost:3000`);
     });
   } catch (error) {
-    console.log(error.message);
+    console.log(`Database error is ${error}`);
     process.exit(1);
   }
 };
+initializeAndDbAndServer();
 
-initializeDbAndServer();
+//                           API 1
+//                         User Login
+// get JWT token using jsonwebtoken package
+// const JWTToken = jwt.sign(payload,'own_secret_key');
+// payload is user information
+//     Scenarios
+// 1)Invalid user
+//  2)Invalid password
+//  3) Return the JWT Token
+Express.post("/login/", async (request, response) => {
+  const { username, password } = request.body;
+  // check user
+  const userDetailsQuery = `select * from user where username = '${username}';`;
+  const userDetails = await database.get(userDetailsQuery);
+  if (userDetails !== undefined) {
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      userDetails.password
+    );
+    if (isPasswordValid) {
+      //get JWT Token
+      const payload = { username: username };
+      const jwtToken = jwt.sign(payload, "vivek_secret_key");
+      response.send({ jwtToken }); //Scenario 3
+    } else {
+      response.status(400);
+      response.send(`Invalid password`); //Scenario 2
+    }
+  } else {
+    response.status(400);
+    response.send("Invalid user"); //Scenario 1
+  }
+});
 
-const convertDbIntoResponse = (dbObject) => {
-  return {
-    stateId: dbObject.state_id,
-    stateName: dbObject.state_name,
-    districtId: dbObject.district_id,
-    districtName: dbObject.district_name,
-  };
-};
+//            Authentication with Token
+//    Scenarios
+//1) If the token is not provided by the user or an invalid token-->Invalid JWT Token
+// 2) After successful verification of token proceed to next middleware or handler
+// get JWT token from headers and validate using jwt.verify
+//jwt.verify(jwtToken , 'secret key given above' , callback function)
 
-const authenticateToken = (request, response, next) => {
+function authenticationToken(request, response, next) {
   let jwtToken;
-  const authHeader = request.headers["authorization"];
+  const authHeader = request.headers.authorization;
   if (authHeader !== undefined) {
     jwtToken = authHeader.split(" ")[1];
   }
-  if (authHeader === undefined) {
-    response.status(401);
-    response.send("Invalid JWT Token");
-  } else {
-    jwt.verify(jwtToken, "abcdefg", async (error, payload) => {
+  if (jwtToken !== undefined) {
+    jwt.verify(jwtToken, "vivek_secret_key", async (error, payload) => {
       if (error) {
-        response.send("Invalid JWT Token");
+        response.status(401);
+        response.send(`Invalid JWT Token`); // Scenario 1
       } else {
-        next();
+        next(); //Scenario 2
       }
     });
-  }
-};
-
-Express.post("/login", async (request, response) => {
-  const { username, password } = request.body;
-  const selectUserQuery = `SELECT * FROM user WHERE username = '${username}'`;
-  const dbUser = await db.get(selectUserQuery);
-  if (dbUser === undefined) {
-    response.status(400);
-    response.send("Invalid user");
   } else {
-    const isPasswordMatched = await bcrypt.compare(password, dbUser.password);
-    if (isPasswordMatched === true) {
-      const payload = { username: username };
-      const jwtToken = jwt.sign(payload, "abcdefg");
-      response.send({ jwtToken });
-    } else {
-      response.status(400);
-      response.send("Invalid password");
-    }
+    response.status(401);
+    response.send(`Invalid JWT Token`); //Scenario 1
   }
+}
+
+//                           API 2
+//Returns a list of all states in the state table
+// get the results if the user has authentication
+const convertStateDbObject = (objectItem) => {
+  return {
+    stateId: objectItem.state_id,
+    stateName: objectItem.state_name,
+    population: objectItem.population,
+  };
+};
+Express.get("/states/", authenticationToken, async (request, response) => {
+  const getStatesQuery = `select * from state;`;
+  const getStates = await database.all(getStatesQuery);
+  response.send(getStates.map((eachState) => convertStateDbObject(eachState)));
 });
 
-Express.get("/states/", authenticateToken, async (request, response) => {
-  const stateResponseQuery = `SELECT * FROM state`;
-  const stateDetails = await db.all(stateResponseQuery);
-  response.send(convertDbIntoResponse(stateDetails));
-});
+//                                       API 3
+// Returns a state based on the state ID
+// only authenticated users get the details
 
 Express.get(
   "/states/:stateId/",
-  authenticateToken,
+  authenticationToken,
   async (request, response) => {
     const { stateId } = request.params;
-    const stateQuery = `SELECT * FROM state WHERE state_id = ${stateId}`;
-    const stateDetails = await db.get(stateQuery);
-    response.send(convertDbIntoResponse(stateDetails));
+    const getStateDetailsQuery = `select * from state where state_id = ${stateId};`;
+    const getStateDetails = await database.get(getStateDetailsQuery);
+    response.send(convertStateDbObject(getStateDetails));
   }
 );
 
-Express.post("/districts/", authenticateToken, async (request, response) => {
-  const { districtId } = request.params;
+//                    API 4
+//Create a district in the district table, district_id is auto-incremented
+// only authenticated users can post the data
+
+Express.post("/districts/", authenticationToken, async (request, response) => {
   const { districtName, stateId, cases, cured, active, deaths } = request.body;
-  const districtQuery = `INSERT INTO district (district_name, state_id, cases, cured, active, deaths) VALUES ('${districtName}', ${stateId}, ${cases}, ${cured}, ${active}, ${deaths})`;
-  await db.run(districtQuery);
-  response.send("District SuccessFully Added");
+  const createDistrictQuery = `insert into district(district_name,state_id,cases,cured,active,deaths) 
+  values('${districtName}',${stateId},${cases},${cured},${active},${deaths});`;
+  const createDistrict = await database.run(createDistrictQuery);
+  response.send(`District Successfully Added`);
 });
 
+//            API 5
+//Returns a district based on the district ID
+const convertDbObjectDistrict = (objectItem) => {
+  return {
+    districtId: objectItem.district_id,
+    districtName: objectItem.district_name,
+    stateId: objectItem.state_id,
+    cases: objectItem.cases,
+    cured: objectItem.cured,
+    active: objectItem.active,
+    deaths: objectItem.deaths,
+  };
+};
 Express.get(
   "/districts/:districtId/",
-  authenticateToken,
+  authenticationToken,
   async (request, response) => {
     const { districtId } = request.params;
-    const districtQuery = `SELECT * FROM district WHERE district_id = ${districtId}`;
-    const districtDetails = await db.get(districtQuery);
-    response.send(convertDbIntoResponse(districtDetails));
+    const getDistrictByIdQuery = `select * from district where district_id=${districtId};`;
+    const getDistrictByIdQueryResponse = await database.get(
+      getDistrictByIdQuery
+    );
+    response.send(convertDbObjectDistrict(getDistrictByIdQueryResponse));
   }
 );
+
+//----------------------API 6
+//Deletes a district from the district table based on the district ID
+// only authenticated users can delete data from database.
 
 Express.delete(
   "/districts/:districtId/",
-  authenticateToken,
+  authenticationToken,
   async (request, response) => {
     const { districtId } = request.params;
-    const deleteQuery = `DELETE FROM district WHERE district_id = ${districtId}`;
-    const getDeleteDistrict = await db.get(deleteQuery);
-    response.send("District Removed");
+    const deleteDistrictQuery = `delete from district where district_id = ${districtId};`;
+    const deleteDistrict = await database.run(deleteDistrictQuery);
+    response.send(`District Removed`);
   }
 );
 
+//                                API 7
+//Updates the details of a specific district based on the district ID
+// only authenticated users can update the data.
 Express.put(
   "/districts/:districtId/",
-  authenticateToken,
+  authenticationToken,
   async (request, response) => {
     const { districtId } = request.params;
     const {
@@ -136,20 +183,34 @@ Express.put(
       active,
       deaths,
     } = request.body;
-    const updateQuery = `UPDATE district SET (district_name = '${districtName}', state_id = ${stateId}, cases = ${cases}, cured = ${cured}, active = ${active}, deaths = ${deaths}) WHERE district_id = ${districtId}`;
-    const getUpdate = await db.run(updateQuery);
+    const updateDistrictQuery = `update district set
+    district_name = '${districtName}',
+    state_id = ${stateId},
+    cases = ${cases},
+    cured = ${cured},
+    active = ${active},
+    deaths = ${deaths} where district_id = ${districtId};`;
+
+    const updateDistrictQueryResponse = await database.run(updateDistrictQuery);
     response.send("District Details Updated");
   }
 );
 
+//                             API 8
+//Returns the statistics of total cases, cured, active, deaths of a specific state based on state ID
+
 Express.get(
   "/states/:stateId/stats/",
-  authenticateToken,
+  authenticationToken,
   async (request, response) => {
     const { stateId } = request.params;
-    const getMovieDetailQuery = `select sum(cases) as totalCases, sum(cured) as totalCured, sum(active) as totalActive, sum(deaths) as totalDeaths from district where state_id = ${stateId}`;
-    const movieDbResponse = await db.get(getMovieDetailQuery);
-    response.send(movieDbResponse);
+    const getStateByIDStatsQuery = `select sum(cases) as totalCases, sum(cured) as totalCured,
+    sum(active) as totalActive , sum(deaths) as totalDeaths from district where state_id = ${stateId};`;
+
+    const getStateByIDStatsQueryResponse = await database.get(
+      getStateByIDStatsQuery
+    );
+    response.send(getStateByIDStatsQueryResponse);
   }
 );
 
